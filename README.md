@@ -1,1 +1,0 @@
-# Informa-es-sobre-conta-de-players-

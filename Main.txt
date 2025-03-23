@@ -1,0 +1,115 @@
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+
+-- Criando a GUI móvel
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local Frame = Instance.new("Frame")
+Frame.Size = UDim2.new(0, 350, 0, 250)
+Frame.Position = UDim2.new(0.5, -175, 0.5, -125)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Active = true
+Frame.Draggable = true
+Frame.Parent = ScreenGui
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Text = "Consultar Conta do Jogador"
+Title.TextColor3 = Color3.new(1, 1, 1)
+Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+Title.Parent = Frame
+
+local InputBox = Instance.new("TextBox")
+InputBox.Size = UDim2.new(1, -20, 0, 30)
+InputBox.Position = UDim2.new(0, 10, 0, 40)
+InputBox.PlaceholderText = "Digite o nome do jogador"
+InputBox.Text = ""
+InputBox.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+InputBox.TextColor3 = Color3.new(1, 1, 1)
+InputBox.Parent = Frame
+
+local SearchButton = Instance.new("TextButton")
+SearchButton.Size = UDim2.new(1, -20, 0, 30)
+SearchButton.Position = UDim2.new(0, 10, 0, 80)
+SearchButton.Text = "Buscar Informações"
+SearchButton.BackgroundColor3 = Color3.fromRGB(100, 100, 255)
+SearchButton.TextColor3 = Color3.new(1, 1, 1)
+SearchButton.Parent = Frame
+
+local InfoLabel = Instance.new("TextLabel")
+InfoLabel.Size = UDim2.new(1, -20, 0, 120)
+InfoLabel.Position = UDim2.new(0, 10, 0, 120)
+InfoLabel.Text = "Aguardando busca..."
+InfoLabel.TextWrapped = true
+InfoLabel.TextColor3 = Color3.new(1, 1, 1)
+InfoLabel.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+InfoLabel.Parent = Frame
+
+-- Função para obter informações da conta
+local function GetPlayerInfo(username)
+    local player = Players:FindFirstChild(username)
+    
+    if player then
+        local userId = player.UserId
+        local displayName = player.DisplayName
+        local accountAge = player.AccountAge
+
+        -- Estimando a data de criação da conta
+        local creationDate = os.date("*t", os.time() - (accountAge * 86400))
+        local formattedDate = string.format("%02d/%02d/%04d", creationDate.day, creationDate.month, creationDate.year)
+
+        -- Função para obter números da API do Roblox
+        local function GetRobloxData(url)
+            local success, response = pcall(function()
+                return HttpService:GetAsync(url)
+            end)
+            if success then
+                local data = HttpService:JSONDecode(response)
+                return data.count or 0
+            end
+            return "Erro"
+        end
+
+        -- Obtendo o número de amigos, seguidores e seguindo
+        local friendsCount = GetRobloxData("https://friends.roblox.com/v1/users/" .. userId .. "/friends/count")
+        local followersCount = GetRobloxData("https://friends.roblox.com/v1/users/" .. userId .. "/followers/count")
+        local followingCount = GetRobloxData("https://friends.roblox.com/v1/users/" .. userId .. "/followings/count")
+
+        return {
+            DisplayName = displayName,
+            UserId = userId,
+            CreatedDate = formattedDate,
+            AccountAge = accountAge,
+            Friends = friendsCount,
+            Followers = followersCount,
+            Following = followingCount
+        }
+    else
+        return nil
+    end
+end
+
+-- Evento do botão de busca
+SearchButton.MouseButton1Click:Connect(function()
+    local username = InputBox.Text
+    if username == "" then
+        InfoLabel.Text = "Digite um nome válido!"
+        return
+    end
+
+    InfoLabel.Text = "Buscando informações..."
+    local playerInfo = GetPlayerInfo(username)
+
+    if playerInfo then
+        InfoLabel.Text = "Nome de Exibição: " .. playerInfo.DisplayName ..
+                         "\nUserID: " .. playerInfo.UserId ..
+                         "\nData de Criação: " .. playerInfo.CreatedDate ..
+                         "\nTempo de Conta: " .. playerInfo.AccountAge .. " dias" ..
+                         "\nAmigos no Roblox: " .. playerInfo.Friends ..
+                         "\nSeguidores: " .. playerInfo.Followers ..
+                         "\nSeguindo: " .. playerInfo.Following
+    else
+        InfoLabel.Text = "Jogador não está no servidor!"
+    end
+end)
